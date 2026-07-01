@@ -136,22 +136,7 @@ function loadData() {
         state.settings = { clientId: "", syncKey: "", firebaseConfig: "" };
     }
 
-    // Fallback to config.js window values if local settings are empty
-    if (window.AuraSpendConfig) {
-        if (!state.settings.clientId && window.AuraSpendConfig.clientId) {
-            state.settings.clientId = window.AuraSpendConfig.clientId;
-        }
-        if (!state.settings.syncKey && window.AuraSpendConfig.syncKey) {
-            state.settings.syncKey = window.AuraSpendConfig.syncKey;
-        }
-        if (!state.settings.firebaseConfig && window.AuraSpendConfig.firebaseConfig) {
-            let configVal = window.AuraSpendConfig.firebaseConfig;
-            if (typeof configVal === 'object') {
-                configVal = JSON.stringify(configVal, null, 2);
-            }
-            state.settings.firebaseConfig = configVal;
-        }
-    }
+
 
     // Try fetching cached OAuth token
     const token = localStorage.getItem("auraspend_gmail_token");
@@ -419,7 +404,7 @@ function populateLedgerCategoryFilters() {
         opt.textContent = val.label;
         grpPlace.appendChild(opt);
     });
-    state.customCategories.filter(c => c.scopeType === "place").forEach(cat => {
+    state.customCategories.filter(c => c.scopeType === "place" || c.scopeType === "bangalore" || c.scopeType === "tirupati").forEach(cat => {
         const opt = document.createElement("option");
         opt.value = cat.id;
         opt.textContent = cat.label;
@@ -472,7 +457,7 @@ function updateFormCategoriesDropdown() {
             opt.textContent = val.label;
             catSelect.appendChild(opt);
         });
-        state.customCategories.filter(c => c.scopeType === "place").forEach(cat => {
+        state.customCategories.filter(c => c.scopeType === "place" || c.scopeType === scope).forEach(cat => {
             const opt = document.createElement("option");
             opt.value = cat.id;
             opt.textContent = cat.label;
@@ -1127,11 +1112,17 @@ function renderCategoriesManagerList() {
     state.customCategories.forEach(cat => {
         const row = document.createElement("div");
         row.className = "category-manager-row";
+        
+        let scopeLabel = "Global Only";
+        if (cat.scopeType === "place") scopeLabel = "Shared (Both)";
+        else if (cat.scopeType === "bangalore") scopeLabel = "Bangalore Only";
+        else if (cat.scopeType === "tirupati") scopeLabel = "Tirupati Only";
+
         row.innerHTML = `
             <div class="category-manager-label-block">
                 <span class="category-manager-dot" style="background-color: ${cat.color}; box-shadow: 0 0 8px ${cat.color};"></span>
                 <span style="font-weight: 600; font-size: 0.875rem;">${cat.label}</span>
-                <span class="badge" style="font-size: 0.625rem; background: rgba(255,255,255,0.05); color: var(--text-secondary);">${cat.scopeType === 'place' ? 'Place-Linked' : 'Global'}</span>
+                <span class="badge" style="font-size: 0.625rem; background: rgba(255,255,255,0.05); color: var(--text-secondary);">${scopeLabel}</span>
             </div>
             <button class="btn-icon delete" style="border: none;" onclick="deleteCustomCategory('${cat.id}')" title="Delete Category">
                 <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
@@ -1511,7 +1502,7 @@ function getGmailRowCategoryOptionsHTML(scope, selectedCat) {
         Object.entries(PREDEFINED_CATEGORIES.place).forEach(([key, val]) => {
             optsHTML += `<option value="${key}" ${key === selectedCat ? 'selected' : ''}>${val.label}</option>`;
         });
-        state.customCategories.filter(c => c.scopeType === 'place').forEach(cat => {
+        state.customCategories.filter(c => c.scopeType === 'place' || c.scopeType === scope).forEach(cat => {
             optsHTML += `<option value="${cat.id}" ${cat.id === selectedCat ? 'selected' : ''}>${cat.label}</option>`;
         });
     }
