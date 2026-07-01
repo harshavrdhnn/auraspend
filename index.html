@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraSpend // Premium Expense & Finance Tracker</title>
+    <!-- CSS Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google APIs & Identity SDKs -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Dashboard Header -->
+        <header>
+            <div class="logo-section" id="logo-home-trigger" style="cursor: pointer;">
+                <div class="logo-icon">
+                    <i data-lucide="wallet"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>AuraSpend</h1>
+                    <p>Financial Intelligence</p>
+                </div>
+            </div>
+            
+            <div class="actions-group">
+                <button class="btn btn-secondary" id="btn-manage-categories">
+                    <i data-lucide="tag"></i> Categories
+                </button>
+                <button class="btn btn-secondary" id="btn-open-settings" title="Application Settings">
+                    <i data-lucide="settings"></i> Settings
+                </button>
+                <button class="btn btn-secondary" id="btn-reset-data" title="Purge All Data to Zero">
+                    <i data-lucide="trash-2"></i> Reset
+                </button>
+            </div>
+        </header>
+
+        <!-- ================= HOME VIEW ================= -->
+        <section id="home-view">
+            <!-- Global Overview Banner -->
+            <div class="global-banner">
+                <div class="banner-content">
+                    <h2>Welcome to AuraSpend</h2>
+                    <p>Track credits, debits, and investments organized by month.</p>
+                </div>
+                <div class="global-banner-stats">
+                    <div class="banner-stat-item">
+                        <span class="label">Total Inflow (All Time)</span>
+                        <span class="value" id="global-total-inflow">₹0</span>
+                    </div>
+                    <div class="banner-stat-item">
+                        <span class="label">Total Outflow (All Time)</span>
+                        <span class="value" id="global-total-outflow">₹0</span>
+                    </div>
+                    <div class="banner-stat-item">
+                        <span class="label">Net Worth</span>
+                        <span class="value" id="global-net-worth">₹0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Months Section -->
+            <div class="section-title-bar">
+                <h3>Monthly Ledgers</h3>
+                <button class="btn btn-primary btn-sm" id="btn-init-month">
+                    <i data-lucide="plus-circle"></i> Initialize Month
+                </button>
+            </div>
+
+            <!-- Month Cards Grid -->
+            <div class="month-cards-grid" id="month-cards-container">
+                <!-- Dynamically populated monthly cards -->
+            </div>
+        </section>
+
+
+        <!-- ================= DASHBOARD VIEW (Scoped to selected month) ================= -->
+        <section id="dashboard-view" style="display: none;">
+            <!-- Sub-Navigation Header -->
+            <div class="sub-nav-bar">
+                <button class="btn btn-secondary" id="btn-back-to-months">
+                    <i data-lucide="arrow-left"></i> Back to Months
+                </button>
+                <div class="active-month-badge">
+                    <i data-lucide="calendar"></i>
+                    <span id="active-month-label">July 2026</span>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-secondary" id="btn-sync-gmail">
+                        <i data-lucide="mail"></i> Sync Gmail
+                    </button>
+                    <button class="btn btn-primary" id="btn-add-tx">
+                        <i data-lucide="plus"></i> Add Transaction
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI Metrics Grid -->
+            <section class="kpi-grid">
+                <!-- Net Balance Card -->
+                <div class="kpi-card balance">
+                    <div class="kpi-info">
+                        <h3>Net Balance</h3>
+                        <div class="kpi-value" id="kpi-net-balance">₹0.00</div>
+                        <div class="kpi-change neutral" id="kpi-balance-status">
+                            <i data-lucide="info" style="width: 12px; height: 12px;"></i> Ready to track
+                        </div>
+                    </div>
+                    <div class="kpi-icon-wrapper">
+                        <i data-lucide="scale"></i>
+                    </div>
+                </div>
+                
+                <!-- Total Credits (Income) Card -->
+                <div class="kpi-card income">
+                    <div class="kpi-info">
+                        <h3>Total Credits</h3>
+                        <div class="kpi-value" id="kpi-total-credits">₹0.00</div>
+                        <div class="kpi-change up" id="kpi-income-sub">
+                            <i data-lucide="trending-up" style="width: 12px; height: 12px;"></i> Cash inflows
+                        </div>
+                    </div>
+                    <div class="kpi-icon-wrapper">
+                        <i data-lucide="arrow-down-left"></i>
+                    </div>
+                </div>
+
+                <!-- Total Debits (Expenses) Card -->
+                <div class="kpi-card expense">
+                    <div class="kpi-info">
+                        <h3>Total Debits</h3>
+                        <div class="kpi-value" id="kpi-total-debits">₹0.00</div>
+                        <div class="kpi-change down" id="kpi-expense-sub">
+                            <i data-lucide="trending-down" style="width: 12px; height: 12px;"></i> Cash outflows
+                        </div>
+                    </div>
+                    <div class="kpi-icon-wrapper">
+                        <i data-lucide="arrow-up-right"></i>
+                    </div>
+                </div>
+
+                <!-- Savings Rate Card -->
+                <div class="kpi-card savings">
+                    <div class="kpi-info">
+                        <h3>Savings Rate</h3>
+                        <div class="kpi-value" id="kpi-savings-rate">0%</div>
+                        <div class="kpi-change up" id="kpi-savings-status">
+                            <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> Keep it up!
+                        </div>
+                    </div>
+                    <div class="kpi-icon-wrapper">
+                        <i data-lucide="piggy-bank"></i>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Charts Visualizations Section -->
+            <section class="charts-grid">
+                <!-- Left Chart: Daily Spendings Trend -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">
+                            <h3>Inflow vs Outflow Trend</h3>
+                            <p>Monthly financial statistics comparison</p>
+                        </div>
+                    </div>
+                    <div class="chart-body chart-body-large">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Right Chart: Category Breakdown Doughnut -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <div class="chart-title">
+                            <h3>Category Shares</h3>
+                            <p>Distribution of monthly expenses</p>
+                        </div>
+                    </div>
+                    <div class="chart-body chart-body-small">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main Ledger & Sidebar layout -->
+            <section class="main-content-layout">
+                <!-- Left Panel: Transaction Ledger -->
+                <div class="ledger-card">
+                    <div class="ledger-header">
+                        <h3 style="font-family: var(--font-heading); font-size: 1.25rem; font-weight: 600;">Transaction History</h3>
+                    </div>
+                    
+                    <!-- Search & Filters Container -->
+                    <div class="search-filter-bar">
+                        <!-- Search Input -->
+                        <div class="input-group">
+                            <i data-lucide="search"></i>
+                            <input type="text" class="form-control" id="search-tx" placeholder="Search description...">
+                        </div>
+                        <!-- Scope Filter -->
+                        <select class="form-control" id="filter-scope">
+                            <option value="all">All Places / Scope</option>
+                            <option value="tirupati">Tirupati</option>
+                            <option value="bangalore">Bangalore</option>
+                            <option value="global">Global (General)</option>
+                        </select>
+                        <!-- Category Filter -->
+                        <select class="form-control" id="filter-category">
+                            <option value="all">All Categories</option>
+                            <!-- Dynamic -->
+                        </select>
+                        <!-- Sort Selection -->
+                        <select class="form-control" id="sort-by">
+                            <option value="date-desc">Newest First</option>
+                            <option value="date-asc">Oldest First</option>
+                            <option value="amount-desc">Amount: High to Low</option>
+                            <option value="amount-asc">Amount: Low to High</option>
+                        </select>
+                    </div>
+
+                    <!-- Ledger List -->
+                    <div class="transaction-list" id="transaction-list-container">
+                        <!-- Dynamic transaction items -->
+                    </div>
+                </div>
+
+                <!-- Right Panel: Sidebar Insights & Budgets -->
+                <div class="sidebar-layout">
+                    <!-- Location Breakdown Widget -->
+                    <div class="insights-card">
+                        <h3>Place Expenses Breakdown</h3>
+                        <div class="place-breakdown-row">
+                            <!-- Tirupati Stats -->
+                            <div class="place-stats">
+                                <div class="place-header">
+                                    <span class="place-title">
+                                        <span class="place-badge tirupati"></span> Tirupati
+                                    </span>
+                                    <span class="place-amount" id="stats-tirupati-amount">₹0.00</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar tirupati" id="stats-tirupati-bar"></div>
+                                </div>
+                                <div class="place-footer">
+                                    <span id="stats-tirupati-percentage">0% of place-linked</span>
+                                    <span id="stats-tirupati-count">0 items</span>
+                                </div>
+                            </div>
+
+                            <!-- Bangalore Stats -->
+                            <div class="place-stats">
+                                <div class="place-header">
+                                    <span class="place-title">
+                                        <span class="place-badge bangalore"></span> Bangalore
+                                    </span>
+                                    <span class="place-amount" id="stats-bangalore-amount">₹0.00</span>
+                                </div>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar bangalore" id="stats-bangalore-bar"></div>
+                                </div>
+                                <div class="place-footer">
+                                    <span id="stats-bangalore-percentage">0% of place-linked</span>
+                                    <span id="stats-bangalore-count">0 items</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Budgets / Allocations Tracker -->
+                    <div class="insights-card">
+                        <h3>Monthly Budget Tracking</h3>
+                        <div class="budget-list" id="budgets-container">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </section>
+    </div>
+
+    <!-- ================= TRANSACTION MODAL ================= -->
+    <div class="modal-overlay" id="tx-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modal-heading">Add Transaction</h3>
+                <button class="btn-close" id="btn-modal-close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            
+            <form id="tx-form">
+                <input type="hidden" id="tx-id">
+
+                <!-- Type Selector -->
+                <div class="form-group">
+                    <label>Transaction Type</label>
+                    <div class="btn-segments">
+                        <button type="button" class="segment-btn active" data-type="debit">Debit (Expense)</button>
+                        <button type="button" class="segment-btn" data-type="credit">Credit (Income)</button>
+                    </div>
+                </div>
+
+                <!-- Scope Selector -->
+                <div class="form-group">
+                    <label>Location / Scope</label>
+                    <div class="btn-segments" id="scope-segments">
+                        <button type="button" class="segment-btn active" data-scope="tirupati">Tirupati</button>
+                        <button type="button" class="segment-btn" data-scope="bangalore">Bangalore</button>
+                        <button type="button" class="segment-btn" data-scope="global">Global</button>
+                    </div>
+                </div>
+
+                <!-- Category Selector -->
+                <div class="form-group">
+                    <label for="tx-category">Category</label>
+                    <select class="form-control" id="tx-category" required>
+                        <!-- Dynamic -->
+                    </select>
+                </div>
+
+                <!-- Description Input -->
+                <div class="form-group">
+                    <label for="tx-description">Description</label>
+                    <input type="text" class="form-control" id="tx-description" placeholder="e.g. Lunch at residency, SIP savings, etc." required>
+                </div>
+
+                <!-- Amount Input -->
+                <div class="form-group">
+                    <label for="tx-amount">Amount (₹)</label>
+                    <input type="number" class="form-control" id="tx-amount" min="1" step="any" placeholder="0.00" required>
+                </div>
+
+                <!-- Date Picker -->
+                <div class="form-group">
+                    <label for="tx-date">Date</label>
+                    <input type="date" class="form-control" id="tx-date" required>
+                </div>
+
+                <div class="form-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-form-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-form-submit">Save Transaction</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= CATEGORY MANAGER MODAL ================= -->
+    <div class="modal-overlay" id="category-modal">
+        <div class="modal-box" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Categories Manager</h3>
+                <button class="btn-close" id="btn-cat-modal-close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+
+            <!-- Create Category Form -->
+            <form id="category-form" style="border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+                <h4 style="font-family: var(--font-heading); font-size: 0.9375rem; margin-bottom: 1rem; color: var(--text-primary);">Create Custom Category</h4>
+                
+                <div style="display: grid; grid-template-columns: 1.5fr 1fr 0.8fr; gap: 0.75rem; align-items: flex-end;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="new-cat-name">Category Name</label>
+                        <input type="text" class="form-control" id="new-cat-name" placeholder="e.g. Medical, Rent" required>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="new-cat-scope">Scope Type</label>
+                        <select class="form-control" id="new-cat-scope" required>
+                            <option value="place">Place-linked</option>
+                            <option value="global">Global (Single)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label for="new-cat-color">Background Color</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="color" id="new-cat-color" value="#6366f1" style="border: none; background: none; width: 42px; height: 38px; cursor: pointer;">
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);" id="color-hex-label">#6366F1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                    <button type="submit" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
+                        <i data-lucide="plus"></i> Add Category
+                    </button>
+                </div>
+            </form>
+
+            <!-- Categories Registry List -->
+            <div>
+                <h4 style="font-family: var(--font-heading); font-size: 0.9375rem; margin-bottom: 0.75rem;">Category Lists</h4>
+                <div style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem;" id="categories-list-container">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MONTH INITIALIZER MODAL ================= -->
+    <div class="modal-overlay" id="month-init-modal">
+        <div class="modal-box" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Initialize Month</h3>
+                <button class="btn-close" id="btn-month-modal-close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            
+            <form id="month-init-form">
+                <div class="form-group">
+                    <label for="init-month-select">Select Month</label>
+                    <select class="form-control" id="init-month-select" required>
+                        <option value="2026-01">January 2026</option>
+                        <option value="2026-02">February 2026</option>
+                        <option value="2026-03">March 2026</option>
+                        <option value="2026-04">April 2026</option>
+                        <option value="2026-05">May 2026</option>
+                        <option value="2026-06">June 2026</option>
+                        <option value="2026-07" selected>July 2026</option>
+                        <option value="2026-08">August 2026</option>
+                        <option value="2026-09">September 2026</option>
+                        <option value="2026-10">October 2026</option>
+                        <option value="2026-11">November 2026</option>
+                        <option value="2026-12">December 2026</option>
+                    </select>
+                </div>
+                
+                <div class="form-footer" style="margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-secondary" id="btn-month-init-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Month Card</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= SETTINGS MODAL ================= -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-box" style="max-width: 550px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Settings</h3>
+                <button class="btn-close" id="btn-settings-close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            
+            <form id="settings-form">
+                <div class="form-group">
+                    <label for="settings-client-id">Google OAuth Client ID</label>
+                    <input type="text" class="form-control" id="settings-client-id" placeholder="Enter your GCP OAuth Client ID here...">
+                    <p style="font-size: 0.725rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        Required to scan financial alerts in Gmail. Obtain a client ID in the <a href="https://console.cloud.google.com/" target="_blank" style="color: var(--accent-primary);">Google Cloud Console</a>.
+                    </p>
+                </div>
+
+                <div style="border-top: 1px solid var(--border-color); padding-top: 1.25rem; margin-top: 1.25rem;">
+                    <h4 style="font-family: var(--font-heading); font-size: 0.9375rem; margin-bottom: 0.5rem;">Mobile / Device Sharing Guide</h4>
+                    <p style="font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.4;">
+                        To access this tracker on your mobile device or other tablets in your network:
+                    </p>
+                    <ol style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 1.25rem; margin-top: 0.5rem; line-height: 1.5;">
+                        <li>Expose Python server on PC: <code>python -m http.server 8080 --bind 0.0.0.0</code></li>
+                        <li>Find your local IP address in command prompt: <code>ipconfig</code> (e.g. 192.168.1.5)</li>
+                        <li>Open the browser on your phone and navigate to: <code id="local-ip-suggestion">http://&lt;your-ip&gt;:8080</code></li>
+                    </ol>
+                </div>
+                
+                <div class="form-footer" style="margin-top: 2rem;">
+                    <button type="button" class="btn btn-secondary" id="btn-settings-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= GMAIL SYNC MODAL ================= -->
+    <div class="modal-overlay" id="gmail-modal">
+        <div class="modal-box" style="max-width: 700px; width: 95%;">
+            <div class="modal-header">
+                <h3 class="modal-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="mail" style="color: var(--accent-debit);"></i> Sync Transactions from Gmail
+                </h3>
+                <button class="btn-close" id="btn-gmail-close">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+            
+            <!-- Connection State / Loading Indicator -->
+            <div id="gmail-status-panel" style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 1.5rem; text-align: center; margin-bottom: 1.25rem;">
+                <div class="spinner" id="gmail-spinner" style="display: none; border: 3px solid rgba(255,255,255,0.1); border-radius: 50%; border-top: 3px solid var(--accent-primary); width: 28px; height: 28px; animation: spin 1s linear infinite; margin: 0 auto 0.75rem auto;"></div>
+                <p id="gmail-status-text" style="font-size: 0.875rem; font-weight: 500;">Ready to synchronize with Gmail.</p>
+                <div style="margin-top: 1rem;" id="gmail-action-block">
+                    <button type="button" class="btn btn-primary" id="btn-gmail-auth">
+                        <i data-lucide="log-in"></i> Authenticate with Google
+                    </button>
+                </div>
+            </div>
+
+            <!-- Parsed Inbox Transactions Review List -->
+            <div id="gmail-results-panel" style="display: none;">
+                <h4 style="font-family: var(--font-heading); font-size: 0.9375rem; margin-bottom: 0.75rem;">Parsed Financial Alerts (Select to Import)</h4>
+                
+                <div class="gmail-import-headers" style="display: grid; grid-template-columns: 35px 2.2fr 1fr 1fr 1fr 1fr; gap: 0.5rem; padding: 0.5rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-color);">
+                    <span>Select</span>
+                    <span>Description</span>
+                    <span>Amount</span>
+                    <span>Date</span>
+                    <span>Scope</span>
+                    <span>Category</span>
+                </div>
+                
+                <div style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem 0;" id="gmail-transactions-list">
+                    <!-- Loaded dynamically -->
+                </div>
+
+                <div class="form-footer" style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+                    <button type="button" class="btn btn-secondary" id="btn-gmail-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btn-gmail-import-submit">Import Selected (0)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Spinner Spin Keyframe Style -->
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+    <!-- Application Script -->
+    <script src="app.js"></script>
+</body>
+</html>
