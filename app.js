@@ -73,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.head.appendChild(styleEl);
 
     loadData();
+    checkUrlHashSettings();
     initFirebase();
     initGoogleSDKs();
     initEventListeners();
@@ -243,6 +244,51 @@ function pushDataToFirebase() {
     if (firebaseDb && state.settings.syncKey) {
         console.log("Pushing updates to cloud Firebase node...");
         firebaseDb.ref(`users/${state.settings.syncKey}/transactions`).set(state.transactions);
+    }
+}
+
+// Hash import and base64 settings link sharing
+function checkUrlHashSettings() {
+    const hash = window.location.hash;
+    if (hash.startsWith("#settings=")) {
+        try {
+            const serialized = hash.substring(10);
+            const decoded = JSON.parse(decodeURIComponent(escape(atob(serialized))));
+            
+            if (decoded && (decoded.clientId || decoded.syncKey || decoded.firebaseConfig)) {
+                state.settings.clientId = decoded.clientId || "";
+                state.settings.syncKey = decoded.syncKey || "";
+                state.settings.firebaseConfig = decoded.firebaseConfig || "";
+                
+                saveData();
+                
+                // Clear hash immediately for cleanliness and security
+                window.history.replaceState(null, null, window.location.pathname);
+                alert("Database sync configuration successfully imported! Connecting...");
+            }
+        } catch (e) {
+            console.error("Failed to parse settings hash:", e);
+        }
+    }
+}
+
+function generateShareLink() {
+    const settings = {
+        clientId: state.settings.clientId || "",
+        syncKey: state.settings.syncKey || "",
+        firebaseConfig: state.settings.firebaseConfig || ""
+    };
+    
+    try {
+        const serialized = btoa(unescape(encodeURIComponent(JSON.stringify(settings))));
+        const shareUrl = `${window.location.origin}${window.location.pathname}#settings=${serialized}`;
+        
+        const linkInput = document.getElementById("share-link-input");
+        linkInput.value = shareUrl;
+        document.getElementById("share-link-container").style.display = "block";
+    } catch (e) {
+        console.error("Failed to serialize share link settings:", e);
+        alert("Error generating share link: " + e.message);
     }
 }
 
@@ -985,6 +1031,22 @@ function initEventListeners() {
         if (e.target.id === "settings-modal") closeSettingsModal();
     });
     document.getElementById("settings-form").addEventListener("submit", handleSettingsSubmit);
+
+    // Share link generation events
+    document.getElementById("btn-generate-share-link").addEventListener("click", generateShareLink);
+    document.getElementById("btn-copy-share-link").addEventListener("click", () => {
+        const input = document.getElementById("share-link-input");
+        input.select();
+        navigator.clipboard.writeText(input.value);
+        
+        const status = document.getElementById("share-link-copy-status");
+        status.textContent = "Copied to clipboard successfully!";
+        status.style.color = "var(--accent-credit)";
+        
+        setTimeout(() => {
+            status.textContent = "Link generated! Click Copy and share it with your other devices.";
+        }, 3000);
+    });
 
     // Gmail Modal
     document.getElementById("btn-sync-gmail").addEventListener("click", openGmailModal);

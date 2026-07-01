@@ -485,6 +485,25 @@
                     </p>
                 </div>
 
+                <!-- Sync Share Link Generator -->
+                <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+                    <label>Generate Configuration Share Link</label>
+                    <p style="font-size: 0.725rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        Click below to create a secure link. Opening it on your mobile device automatically syncs all settings (including passcode & database config).
+                    </p>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-generate-share-link" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+                        <i data-lucide="share-2" style="width: 14px; height: 14px;"></i> Generate Link
+                    </button>
+                    
+                    <div id="share-link-container" style="display: none; margin-top: 0.75rem;">
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="text" class="form-control form-control-sm" id="share-link-input" readonly style="font-family: monospace; font-size: 0.75rem; flex: 1;">
+                            <button type="button" class="btn btn-primary btn-sm" id="btn-copy-share-link" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">Copy</button>
+                        </div>
+                        <p style="font-size: 0.725rem; color: var(--accent-credit); margin-top: 0.25rem; font-weight: 600;" id="share-link-copy-status">Link generated! Click Copy and share it with your other devices.</p>
+                    </div>
+                </div>
+
                 <div style="border-top: 1px solid var(--border-color); padding-top: 1.25rem; margin-top: 1.25rem;">
                     <h4 style="font-family: var(--font-heading); font-size: 0.9375rem; margin-bottom: 0.5rem;">Mobile / Device Sharing Guide</h4>
                     <p style="font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.4;">
