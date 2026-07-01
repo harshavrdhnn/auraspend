@@ -97,27 +97,50 @@ function loadData() {
     const settingsSaved = localStorage.getItem("auraspend_settings_v3");
 
     if (txSaved) {
-        state.transactions = JSON.parse(txSaved);
+        try {
+            state.transactions = JSON.parse(txSaved);
+            if (!Array.isArray(state.transactions)) state.transactions = [];
+        } catch (e) {
+            console.error("Failed to parse transactions, resetting.", e);
+            state.transactions = [...INITIAL_DEMO_TRANSACTIONS];
+        }
     } else {
         state.transactions = [...INITIAL_DEMO_TRANSACTIONS];
         localStorage.setItem("auraspend_transactions_v3", JSON.stringify(state.transactions));
     }
 
     if (catSaved) {
-        state.customCategories = JSON.parse(catSaved);
+        try {
+            state.customCategories = JSON.parse(catSaved);
+            if (!Array.isArray(state.customCategories)) state.customCategories = [];
+        } catch (e) {
+            console.error("Failed to parse custom categories, resetting.", e);
+            state.customCategories = [];
+        }
     } else {
         state.customCategories = [];
     }
 
     if (monthsSaved) {
-        state.initializedMonths = JSON.parse(monthsSaved);
+        try {
+            state.initializedMonths = JSON.parse(monthsSaved);
+            if (!Array.isArray(state.initializedMonths)) state.initializedMonths = [];
+        } catch (e) {
+            console.error("Failed to parse initialized months, resetting.", e);
+            state.initializedMonths = ["2026-06", "2026-07"];
+        }
     } else {
         state.initializedMonths = ["2026-06", "2026-07"];
         localStorage.setItem("auraspend_months_v3", JSON.stringify(state.initializedMonths));
     }
 
     if (settingsSaved) {
-        state.settings = JSON.parse(settingsSaved);
+        try {
+            state.settings = JSON.parse(settingsSaved);
+        } catch (e) {
+            console.error("Failed to parse settings, resetting.", e);
+            state.settings = { clientId: "" };
+        }
     } else {
         state.settings = { clientId: "" };
     }
@@ -1561,7 +1584,9 @@ function formatCurrency(num) {
 }
 
 function formatDateDisplay(dateStr) {
+    if (!dateStr) return "N/A";
     const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "N/A";
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
