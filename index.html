@@ -13,6 +13,10 @@
     <!-- Google APIs & Identity SDKs -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://apis.google.com/js/api.js" async defer></script>
+    
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
     <div class="container">
@@ -35,7 +39,8 @@
                 <button class="btn btn-secondary" id="btn-open-settings" title="Application Settings">
                     <i data-lucide="settings"></i> Settings
                 </button>
-                <button class="btn btn-secondary" id="btn-reset-data" title="Purge All Data to Zero">
+                <!-- Reset Data Button Disabled and Hidden for now -->
+                <button class="btn btn-secondary" id="btn-reset-data" title="Purge All Data to Zero" disabled style="display: none;">
                     <i data-lucide="trash-2"></i> Reset
                 </button>
             </div>
@@ -453,8 +458,27 @@
             </div>
             
             <form id="settings-form">
+                <!-- Sync Key -->
                 <div class="form-group">
-                    <label for="settings-client-id">Google OAuth Client ID</label>
+                    <label for="settings-sync-key">Cloud Sync Passcode</label>
+                    <input type="text" class="form-control" id="settings-sync-key" placeholder="Enter passcode to synchronize all devices...">
+                    <p style="font-size: 0.725rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        Devices with this same passcode will share and update the same transaction list dynamically.
+                    </p>
+                </div>
+
+                <!-- Firebase Config -->
+                <div class="form-group">
+                    <label for="settings-firebase-config">Firebase Database Config JSON</label>
+                    <textarea class="form-control" id="settings-firebase-config" rows="4" placeholder='e.g. { "apiKey": "...", "databaseURL": "...", "projectId": "..." }' style="font-family: monospace; font-size: 0.75rem; resize: vertical;"></textarea>
+                    <p style="font-size: 0.725rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        Paste the web app configuration object from your Firebase project. Set up rules to read/write publicly.
+                    </p>
+                </div>
+
+                <!-- Google Client ID -->
+                <div class="form-group">
+                    <label for="settings-client-id">Google OAuth Client ID (Gmail Sync)</label>
                     <input type="text" class="form-control" id="settings-client-id" placeholder="Enter your GCP OAuth Client ID here...">
                     <p style="font-size: 0.725rem; color: var(--text-muted); margin-top: 0.25rem;">
                         Required to scan financial alerts in Gmail. Obtain a client ID in the <a href="https://console.cloud.google.com/" target="_blank" style="color: var(--accent-primary);">Google Cloud Console</a>.

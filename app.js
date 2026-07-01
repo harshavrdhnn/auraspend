@@ -23,26 +23,8 @@ const DEFAULT_BUDGET_LIMITS = {
     subscriptions: 3000
 };
 
-// Initial Mock data (populated on first ever load)
-const INITIAL_DEMO_TRANSACTIONS = [
-    { id: "mock-1", description: "Office Co-working Rent Share", amount: 12000, type: "debit", scope: "bangalore", category: "misc", date: "2026-06-02" },
-    { id: "mock-2", description: "Indiranagar Pub Dinner with Team", amount: 4500, type: "debit", scope: "bangalore", category: "entertainment", date: "2026-06-06" },
-    { id: "mock-3", description: "Ola Cab Ride to Airport", amount: 1500, type: "debit", scope: "bangalore", category: "travel", date: "2026-06-12" },
-    { id: "mock-4", description: "Bhimas Hotel Traditional Lunch", amount: 1200, type: "debit", scope: "tirupati", category: "food", date: "2026-06-16" },
-    { id: "mock-5", description: "Train Tickets Bangalore to Tirupati", amount: 1800, type: "debit", scope: "tirupati", category: "travel", date: "2026-06-14" },
-    { id: "mock-6", description: "Consulting Software Monthly Inflow", amount: 120000, type: "credit", scope: "global", category: "savings", date: "2026-06-01" },
-    { id: "mock-7", description: "Freelance Designing Milestone", amount: 35000, type: "credit", scope: "global", category: "investment", date: "2026-06-15" },
-    { id: "mock-8", description: "HDFC Home Loan Interest Outflow", amount: 28000, type: "debit", scope: "global", category: "loan", date: "2026-06-05" },
-    { id: "mock-9", description: "Car Loan EMI Auto Debit", amount: 14500, type: "debit", scope: "global", category: "emi", date: "2026-06-05" },
-    { id: "mock-10", description: "Mutual Fund SIP Auto-Invest", amount: 15000, type: "debit", scope: "global", category: "investment", date: "2026-06-10" },
-    { id: "mock-11", description: "Netflix Premium + Spotify subscription", amount: 950, type: "debit", scope: "bangalore", category: "subscriptions", date: "2026-06-05" },
-    
-    // July Mock Data
-    { id: "mock-12", description: "Consulting Software Monthly Inflow", amount: 120000, type: "credit", scope: "global", category: "savings", date: "2026-07-01" },
-    { id: "mock-13", description: "Grocery Store Supermarket Cart", amount: 4800, type: "debit", scope: "bangalore", category: "groceries", date: "2026-07-02" },
-    { id: "mock-14", description: "Weekend Movie Ticket at Nexus", amount: 1100, type: "debit", scope: "bangalore", category: "entertainment", date: "2026-07-04" },
-    { id: "mock-15", description: "Hotel Fortune Stay Tirupati", amount: 6500, type: "debit", scope: "tirupati", category: "travel", date: "2026-07-05" }
-];
+// No demo mock data - Clean Slate Start
+const INITIAL_DEMO_TRANSACTIONS = [];
 
 // App State
 let state = {
@@ -51,7 +33,9 @@ let state = {
     initializedMonths: [],
     activeMonth: null, // "YYYY-MM" (e.g. "2026-07") - if null, show Home View
     settings: {
-        clientId: ""
+        clientId: "",
+        syncKey: "",
+        firebaseConfig: ""
     },
     gmail: {
         tokenClient: null,
@@ -76,6 +60,11 @@ let state = {
     }
 };
 
+// Firebase Globals
+let firebaseApp = null;
+let firebaseDb = null;
+let firebaseSyncRef = null;
+
 // Start App
 document.addEventListener("DOMContentLoaded", () => {
     // Inject stylesheet wrapper for custom styles
@@ -84,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.head.appendChild(styleEl);
 
     loadData();
+    initFirebase();
     initGoogleSDKs();
     initEventListeners();
     renderView();
@@ -102,10 +92,10 @@ function loadData() {
             if (!Array.isArray(state.transactions)) state.transactions = [];
         } catch (e) {
             console.error("Failed to parse transactions, resetting.", e);
-            state.transactions = [...INITIAL_DEMO_TRANSACTIONS];
+            state.transactions = [];
         }
     } else {
-        state.transactions = [...INITIAL_DEMO_TRANSACTIONS];
+        state.transactions = [];
         localStorage.setItem("auraspend_transactions_v3", JSON.stringify(state.transactions));
     }
 
@@ -127,10 +117,10 @@ function loadData() {
             if (!Array.isArray(state.initializedMonths)) state.initializedMonths = [];
         } catch (e) {
             console.error("Failed to parse initialized months, resetting.", e);
-            state.initializedMonths = ["2026-06", "2026-07"];
+            state.initializedMonths = [];
         }
     } else {
-        state.initializedMonths = ["2026-06", "2026-07"];
+        state.initializedMonths = [];
         localStorage.setItem("auraspend_months_v3", JSON.stringify(state.initializedMonths));
     }
 
@@ -139,10 +129,10 @@ function loadData() {
             state.settings = JSON.parse(settingsSaved);
         } catch (e) {
             console.error("Failed to parse settings, resetting.", e);
-            state.settings = { clientId: "" };
+            state.settings = { clientId: "", syncKey: "", firebaseConfig: "" };
         }
     } else {
-        state.settings = { clientId: "" };
+        state.settings = { clientId: "", syncKey: "", firebaseConfig: "" };
     }
 
     // Try fetching cached OAuth token
@@ -160,6 +150,83 @@ function saveData() {
     localStorage.setItem("auraspend_categories_v3", JSON.stringify(state.customCategories));
     localStorage.setItem("auraspend_months_v3", JSON.stringify(state.initializedMonths));
     localStorage.setItem("auraspend_settings_v3", JSON.stringify(state.settings));
+    pushDataToFirebase();
+}
+
+// Initialize Firebase Realtime Database
+function initFirebase() {
+    const configStr = state.settings.firebaseConfig;
+    const syncKey = state.settings.syncKey;
+
+    if (!configStr || !syncKey) {
+        console.log("Firebase configuration or Sync passcode key is missing. Sync disabled.");
+        return;
+    }
+
+    try {
+        let config = {};
+        if (typeof configStr === 'string') {
+            config = JSON.parse(configStr);
+        } else {
+            config = configStr;
+        }
+
+        if (typeof firebase !== 'undefined') {
+            if (firebase.apps.length === 0) {
+                firebaseApp = firebase.initializeApp(config);
+            } else {
+                firebaseApp = firebase.app();
+            }
+            firebaseDb = firebase.database();
+            setupFirebaseSyncListener(syncKey);
+        }
+    } catch (e) {
+        console.error("Firebase config parsing or initialization failed:", e);
+    }
+}
+
+// Setup real-time listener for database sync
+function setupFirebaseSyncListener(syncKey) {
+    if (!firebaseDb) return;
+
+    if (firebaseSyncRef) {
+        firebaseSyncRef.off();
+    }
+
+    console.log(`Setting up real-time listener at users/${syncKey}/transactions`);
+    firebaseSyncRef = firebaseDb.ref(`users/${syncKey}/transactions`);
+    
+    firebaseSyncRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        console.log("Received database update snapshot:", data);
+
+        if (data) {
+            state.transactions = data;
+        } else {
+            state.transactions = [];
+        }
+
+        localStorage.setItem("auraspend_transactions_v3", JSON.stringify(state.transactions));
+
+        // Derive active month cards
+        const monthKeys = new Set(state.transactions.map(t => t.date.substring(0, 7)));
+        state.initializedMonths = Array.from(monthKeys);
+        localStorage.setItem("auraspend_months_v3", JSON.stringify(state.initializedMonths));
+
+        if (state.activeMonth && !state.initializedMonths.includes(state.activeMonth)) {
+            state.activeMonth = null;
+        }
+
+        renderView();
+    });
+}
+
+// Push local edits back to Firebase
+function pushDataToFirebase() {
+    if (firebaseDb && state.settings.syncKey) {
+        console.log("Pushing updates to cloud Firebase node...");
+        firebaseDb.ref(`users/${state.settings.syncKey}/transactions`).set(state.transactions);
+    }
 }
 
 // Google APIs client setup
@@ -866,17 +933,10 @@ function initEventListeners() {
         renderView();
     });
 
-    document.getElementById("btn-reset-data").addEventListener("click", () => {
-        if (confirm("WARNING: Are you sure you want to delete all transactions, initialized months, and custom categories? This will wipe the database to zero.")) {
-            state.transactions = [];
-            state.initializedMonths = [];
-            state.customCategories = [];
-            state.activeMonth = null;
-            saveData();
-            syncCategoryStyles();
-            renderView();
-        }
-    });
+    // Reset listener disabled in app code
+    /*
+    document.getElementById("btn-reset-data").addEventListener("click", () => { ... });
+    */
 
     // Categories Modal
     document.getElementById("btn-manage-categories").addEventListener("click", openCategoriesModal);
@@ -1081,6 +1141,13 @@ function handleMonthInitSubmit(e) {
 // Settings modals logic
 function openSettingsModal() {
     document.getElementById("settings-client-id").value = state.settings.clientId || "";
+    document.getElementById("settings-sync-key").value = state.settings.syncKey || "";
+    
+    let configVal = state.settings.firebaseConfig || "";
+    if (typeof configVal === 'object') {
+        configVal = JSON.stringify(configVal, null, 2);
+    }
+    document.getElementById("settings-firebase-config").value = configVal;
     
     // Attempt to guess IP for helper text
     const helper = document.getElementById("local-ip-suggestion");
@@ -1098,10 +1165,13 @@ function closeSettingsModal() {
 function handleSettingsSubmit(e) {
     e.preventDefault();
     state.settings.clientId = document.getElementById("settings-client-id").value.trim();
+    state.settings.syncKey = document.getElementById("settings-sync-key").value.trim();
+    state.settings.firebaseConfig = document.getElementById("settings-firebase-config").value.trim();
     saveData();
     closeSettingsModal();
     
-    // Reinitialize client oauth if id changed
+    // Reinitialize configurations
+    initFirebase();
     initTokenClient();
 }
 
@@ -1250,7 +1320,6 @@ async function runGmailSync() {
 // Regex matching alert signals
 function parseEmailToTransaction(gMsg) {
     const snippet = gMsg.snippet || "";
-    // Clean spaces
     const body = snippet.replace(/\s+/g, " ");
     
     // 1. Amount Extraction (Rupee matches: Rs., INR, or ₹)
@@ -1318,14 +1387,12 @@ function renderGmailTransactionsList() {
     const list = document.getElementById("gmail-transactions-list");
     list.innerHTML = "";
     
-    // Sort transactions by date descending
     state.gmail.parsedTransactions.sort((a,b) => b.date.localeCompare(a.date));
 
     state.gmail.parsedTransactions.forEach((tx, idx) => {
         const row = document.createElement("div");
         row.className = `gmail-row ${tx.type}`;
         
-        // Scope options select string
         const scopeOptions = `
             <select class="form-control form-control-sm" id="gmail-scope-${idx}" onchange="updateGmailRowScope(${idx}, this.value)" style="border: none; padding: 0.15rem 0.25rem;">
                 <option value="global" ${tx.scope === 'global' ? 'selected' : ''}>Global</option>
@@ -1334,7 +1401,6 @@ function renderGmailTransactionsList() {
             </select>
         `;
 
-        // Category options string based on scope
         const categoriesOptions = getGmailRowCategoryOptionsHTML(tx.scope, tx.category);
 
         row.innerHTML = `
@@ -1381,10 +1447,8 @@ function getGmailRowCategoryOptionsHTML(scope, selectedCat) {
 window.updateGmailRowScope = function(idx, newScope) {
     state.gmail.parsedTransactions[idx].scope = newScope;
     
-    // If scope changes, categories select must update to display matching scopes options
     const col = document.getElementById(`gmail-cat-col-${idx}`);
     if (col) {
-        // Auto-assign first matching category or fallback
         const defaultCat = newScope === 'global' ? 'savings' : 'food';
         state.gmail.parsedTransactions[idx].category = defaultCat;
         col.innerHTML = getGmailRowCategoryOptionsHTML(newScope, defaultCat);
@@ -1409,7 +1473,6 @@ function handleGmailImportSubmit() {
     state.gmail.parsedTransactions.forEach((tx, idx) => {
         const chk = document.getElementById(`gmail-chk-${idx}`);
         if (chk && chk.checked) {
-            // Get final category and scope from dropdowns
             const scopeSelect = document.getElementById(`gmail-scope-${idx}`);
             const rowScope = scopeSelect ? scopeSelect.value : tx.scope;
             
@@ -1443,7 +1506,6 @@ function handleGmailImportSubmit() {
         saveData();
         closeGmailModal();
         
-        // If we are currently in dashboard, reload scoped stats. If not, reload home.
         if (state.activeMonth) {
             updateDashboardUI();
         } else {
