@@ -135,6 +135,23 @@ function loadData() {
         state.settings = { clientId: "", syncKey: "", firebaseConfig: "" };
     }
 
+    // Fallback to config.js window values if local settings are empty
+    if (window.AuraSpendConfig) {
+        if (!state.settings.clientId && window.AuraSpendConfig.clientId) {
+            state.settings.clientId = window.AuraSpendConfig.clientId;
+        }
+        if (!state.settings.syncKey && window.AuraSpendConfig.syncKey) {
+            state.settings.syncKey = window.AuraSpendConfig.syncKey;
+        }
+        if (!state.settings.firebaseConfig && window.AuraSpendConfig.firebaseConfig) {
+            let configVal = window.AuraSpendConfig.firebaseConfig;
+            if (typeof configVal === 'object') {
+                configVal = JSON.stringify(configVal, null, 2);
+            }
+            state.settings.firebaseConfig = configVal;
+        }
+    }
+
     // Try fetching cached OAuth token
     const token = localStorage.getItem("auraspend_gmail_token");
     if (token) {
